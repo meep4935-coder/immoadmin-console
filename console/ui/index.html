@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Trace Console</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%232a78d6'/%3E%3Cpath d='M3 9h3l2-5 2 8 2-3h1' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="/style.css" />
+<script>
+  // Apply the saved theme before first paint (storage may be unavailable → fall back to the OS setting).
+  try { var t = localStorage.getItem("console-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 9h3l2-5 2 8 2-3h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Trace Console</div>
+  <nav id="nav" aria-label="Sections"></nav>
+  <div class="top-right">
+    <span id="modePill" class="pill" title="Scrubbing mode"></span>
+    <span id="livePill" class="pill"><span class="dot"></span><span id="liveText">connecting</span></span>
+    <button id="themeBtn" class="btn ghost" aria-label="Toggle light/dark theme">Theme</button>
+  </div>
+</header>
+<main id="view" aria-live="polite"></main>
+<div id="tip" class="tip" role="tooltip" hidden></div>
+<script src="/app.js"></script>
+<script src="/findings.js"></script>
+</body>
+</html>

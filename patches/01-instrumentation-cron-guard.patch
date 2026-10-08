@@ -1,0 +1,74 @@
+diff --git a/instrumentation-client.ts b/instrumentation-client.ts
+index 2f06729..506e71f 100644
+--- a/instrumentation-client.ts
++++ b/instrumentation-client.ts
+@@ -98,6 +98,15 @@ if (typeof window !== "undefined") {
+   });
+ }
+ 
++// Télémétrie de production (ÉTEINTE par défaut). NEXT_PUBLIC_TRACE_PROD est inlinée à la COMPILATION : absente, ce bloc est
++// éliminé et l'enregistreur n'est même pas empaqueté. Présente, il se charge quand le navigateur est au repos, puis demande
++// au serveur (GET /api/telemetry) s'il doit enregistrer — le serveur peut répondre non.
++if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_TRACE_PROD === "1") {
++  const demarrer = () => { void import("@/app/lib/trace/prod/client").then((m) => m.startProdRecorder()).catch(() => { /* jamais bloquer la page */ }); };
++  const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
++  if (typeof ric === "function") ric(demarrer, { timeout: 4000 }); else window.setTimeout(demarrer, 2500);
++}
++
+ /**
+  * Instrumente les navigations App Router (convention @sentry/nextjs v9+).
+  *
+diff --git a/instrumentation.ts b/instrumentation.ts
+index c5b2e3a..45ab98f 100644
+--- a/instrumentation.ts
++++ b/instrumentation.ts
+@@ -6,3 +6,22 @@ export async function register() {
+     await import("./sentry.edge.config");
+   }
+ }
++
++/**
++ * Erreurs non gérées vues par Next → télémétrie de production.
++ * INERTE tant que TRACE_PROD_ENABLED n'est pas « 1 » : la première ligne rend la main sans rien charger.
++ * Ne doit JAMAIS avoir d'effet sur la requête : tout est enveloppé et le résultat est ignoré.
++ */
++export async function onRequestError(
++  err: unknown,
++  request: { path: string; method: string },
++  context: { routePath?: string },
++) {
++  if (process.env.NEXT_RUNTIME !== "nodejs" || process.env.TRACE_PROD_ENABLED !== "1") return;
++  try {
++    const { reportServerError } = await import("@/app/lib/trace/prod/server");
++    await reportServerError(err, request, context);
++  } catch {
++    /* jamais d'effet sur la requête */
++  }
++}
+diff --git a/scripts/test-rbac-p3-gate-coverage-2026-06-19.ts b/scripts/test-rbac-p3-gate-coverage-2026-06-19.ts
+index 8e66eb5..b06c160 100644
+--- a/scripts/test-rbac-p3-gate-coverage-2026-06-19.ts
++++ b/scripts/test-rbac-p3-gate-coverage-2026-06-19.ts
+@@ -67,6 +67,9 @@ const ALLOWLIST: Record<string, string> = {
+   "auth/logout": "déconnexion : signOut() agit sur la session du DEMANDEUR (cookie) et efface ses propres cookies. Il n'y a rien à autoriser — on ne peut déconnecter que soi-même (ajout 2026-09-24)",
+   "inngest": "point d'entrée Inngest (serve() de inngest/next). Le gate n'est PAS applicatif : le SDK vérifie la SIGNATURE de chaque exécution avec INNGEST_SIGNING_KEY, lue automatiquement de l'environnement. ATTENTION — la garantie tient donc à une variable d'env : sans elle, serve() retombe en mode dev et accepte du non signé. À vérifier en prod, pas dans le code (ajout 2026-09-24)",
+   "v2/openapi": "document OpenAPI de l'API publique v2, généré depuis le Capability Registry STATIQUE et l'origine de la requête. Aucune lecture de données, aucun paramètre de compte : c'est une spécification, la même pour tout le monde (ajout 2026-09-24)",
++  // ── Télémétrie de production (paquet trace-prod-package). Inerte tant que TRACE_PROD_ENABLED≠1 et TRACE_PSEUDONYM_SECRET absent.
++  "telemetry": "ingestion de télémétrie : accepte par CONCEPTION les visiteurs ANONYMES (erreurs de la page de connexion). Aucune lecture de données ; tout événement passe par une liste blanche côté serveur avant écriture, taille et débit bornés ; l'identité (cookie) ne sert qu'à fabriquer une référence pseudonyme et n'ouvre aucun accès",
++  "telemetry/export": "lecture seule PROTÉGÉE PAR JETON PORTEUR (TRACE_EXPORT_TOKEN, ≥ 24 caractères, comparaison à temps constant) ; 404 si le jeton n'est pas défini. Le gate n'est pas applicatif (pas de session) : la garantie tient au secret d'environnement",
+ };
+ 
+ function walk(dir: string): string[] {
+diff --git a/vercel.json b/vercel.json
+index c7a2d3b..0d6f41a 100644
+--- a/vercel.json
++++ b/vercel.json
+@@ -55,6 +55,7 @@
+     { "path": "/api/cron/cre-paid-unsent",               "schedule": "0 13 * * *" },
+     { "path": "/api/cron/cre-consent-reminders",        "schedule": "0 13 * * *" },
+     { "path": "/api/cron/portfolio-slug-grace-purge",   "schedule": "0 4 1 * *" },
+-    { "path": "/api/cron/webhook-dispatch",             "schedule": "*/5 * * * *" }
++    { "path": "/api/cron/webhook-dispatch",             "schedule": "*/5 * * * *" },
++    { "path": "/api/cron/telemetry-purge",            "schedule": "0 4 * * *" }
+   ]
+ }

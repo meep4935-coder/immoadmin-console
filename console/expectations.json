@@ -1,0 +1,20 @@
+{
+  "_comment": "Absence detection: alert when something that SHOULD happen does not. OFF by default — in development nothing runs your crons, so every one would look 'missed'. Turn it on only when the console is receiving data from the environment where they actually run. The file is re-read on every check; no restart needed.",
+  "crons": {
+    "enabled": false,
+    "vercelJson": "../../vercel.json",
+    "graceMinutes": 3,
+    "onlyWhenSeen": true,
+    "ignore": []
+  },
+  "events": [
+    {
+      "name": "Example: payment-provider webhook",
+      "match": { "kind": "net.server", "route": "/api/billing/webhook" },
+      "everyMinutes": 720,
+      "tolerance": 0.25,
+      "required": false,
+      "enabled": false
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+diff --git a/scripts/test-prelaunch-redirect.ts b/scripts/test-prelaunch-redirect.ts
+index 459675a..152fb9b 100644
+--- a/scripts/test-prelaunch-redirect.ts
++++ b/scripts/test-prelaunch-redirect.ts
+@@ -64,6 +64,7 @@ const ALWAYS_OPEN_PATHS = [
+   "/api/public",
+   "/api/geo",
+   "/api/unsubscribe", // 3B2-B K4 (GO Frédérick 2026-08-16, répliqué) : désabonnement LCAP toujours joignable
++  "/api/telemetry", // répliqué de proxy.ts
+   "/api/billing/webhook",
+   "/api/sms/webhook",
+   "/api/singlekey/webhook",
+diff --git a/src/proxy.ts b/src/proxy.ts
+index f1274ea..a042d8a 100644
+--- a/src/proxy.ts
++++ b/src/proxy.ts
+@@ -105,6 +105,7 @@ const ALWAYS_OPEN_PATHS = [
+   "/api/public",
+   "/api/geo",
+   "/api/unsubscribe", // 3B2-B K4 (GO Frédérick 2026-08-16) : désabonnement LCAP art. 11 — le jeton HMAC est la sécurité ; doit rester joignable même verrou ON
++  "/api/telemetry", // Télémétrie (inerte tant que TRACE_PROD_ENABLED≠1) : doit rester joignable sans session NI abonnement (erreurs de la page de connexion, locataire impayé).
+   // Webhooks (server-to-server, pas de cookie possible)
+   "/api/billing/webhook",
+   "/api/sms/webhook",
+@@ -678,6 +679,7 @@ export async function proxy(request: NextRequest) {
+     // fonctionnel (art. 11(1)a) — jamais un 402 d'abonnement dessus (un proprio IMPAYÉ est
+     // précisément un destinataire probable de rappels commerciaux).
+     "/api/unsubscribe",
++    "/api/telemetry",
+   ];
+   /* LES QUATRE ROUTES DE SIGNATURE QUI DOIVENT RESTER JOIGNABLES SANS ABONNEMENT.
+      Un tiers qui ouvre le lien reçu par courriel n'a AUCUNE session : un 402 sur lui transformerait
